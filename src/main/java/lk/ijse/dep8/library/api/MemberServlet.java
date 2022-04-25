@@ -116,4 +116,37 @@ public class MemberServlet extends HttpServlet {
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         doSaveOrUpdate(req, resp);
     }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if (req.getPathInfo()==null || req.getPathInfo().equals("/")) {
+            resp.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "unable to delete all the members");
+            return;
+        } else if (req.getPathInfo()!=null && !req.getPathInfo().substring(1).matches("\\d{9}[Vv][/]?")){
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Member not found");
+            return;
+        }
+
+        String nic = req.getPathInfo().replaceAll("[/]","");
+
+        try (Connection connection = pool.getConnection()) {
+            PreparedStatement stm = connection.prepareStatement("SELECT * FROM member WHERE nic=?");
+            stm.setString(1, nic);
+            ResultSet rst = stm.executeQuery();
+
+            if (rst.next()){
+                stm = connection.prepareStatement("DELETE FROM member WHERE nic=?");
+                stm.setString(1, nic);
+                if (stm.executeUpdate()!=1) {
+                    throw new RuntimeException("Failed to delete the member");
+                }
+                resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            } else {
+                resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Member not found");
+            }
+        } catch (SQLException | RuntimeException e) {
+            e.printStackTrace();
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
 }
