@@ -16,6 +16,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 @WebServlet(name = "BookServlet", value = "/books/*")
 public class BookServlet extends HttpServlet {
@@ -97,8 +99,60 @@ public class BookServlet extends HttpServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if (req.getPathInfo()!=null && !req.getPathInfo().equals("/")) {
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
 
+        String query = req.getParameter("q");
+        query = "%"+((query==null) ? "" : query)+"%";
+
+        try(Connection connection = pool.getConnection()){
+            boolean pagination = req.getParameter("page") !=null && req.getParameter("size")!=null;
+            String sql = "SELECT * FROM book WHERE isbn LIKE ? OR name LIKE ? OR author LIKE ?"+((pagination) ? "LIMIT ? OFFSET ?":"");
+            PreparedStatement stm = connection.prepareStatement(sql);
+            PreparedStatement stmCount = connection.prepareStatement("SELECT count(*) FROM book WHERE isbn LIKE ? OR name LIKE ? OR author LIKE ?");
+
+            stm.setString(1,query);
+            stm.setString(2,query);
+            stm.setString(3,query);
+            stmCount.setString(1,query);
+            stmCount.setString(2,query);
+            stmCount.setString(3,query);
+
+            if (pagination) {
+                int page = Integer.parseInt(req.getParameter("page"));
+                int size = Integer.parseInt(req.getParameter("size"));
+
+                stm.setInt(4, size);
+                stm.setInt(5, (page-1)*size);
+            }
+
+            ResultSet rst = stm.executeQuery();
+            List<BookDTO> books = new ArrayList<>();
+
+            while (rst.next()) {
+                books.add((new BookDTO(
+                        rst.getString("isbn"),
+                        rst.getString("name"),
+                        rst.getString("author")
+                )));
+            }
+
+            resp.setContentType("application/json");
+            ResultSet rstCount = stmCount.executeQuery();
+            if (rstCount.next()) {
+                resp.setHeader("X-Count", rstCount.getString(1));
+            }
+
+            Jsonb jsonb = JsonbBuilder.create();
+            jsonb.toJson(books, resp.getWriter());
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
     }
 
     @Override
