@@ -1,11 +1,16 @@
 package lk.ijse.dep8.library.dto;
 
+import jakarta.json.bind.annotation.JsonbProperty;
+import jakarta.json.bind.annotation.JsonbTransient;
+
 import java.io.Serializable;
+import java.util.Base64;
 
 public class BookDTO implements Serializable {
     private String isbn;
     private String name;
     private String author;
+    @JsonbTransient
     private byte[] preview;
 
     public BookDTO() {
@@ -56,6 +61,11 @@ public class BookDTO implements Serializable {
         this.preview = preview;
     }
 
+    @JsonbProperty(value = "preview",  nillable = true)
+    public String getPreviewAsDataURI() {
+        return (preview == null ? null : "data:image/*;base64,"+
+                Base64.getEncoder().encodeToString(preview));
+    }
 
     @Override
     public String toString() {
