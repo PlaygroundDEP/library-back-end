@@ -7,8 +7,7 @@ CREATE TABLE member(
 CREATE TABLE book(
                      isbn VARCHAR(25) PRIMARY KEY ,
                      name VARCHAR(100) NOT NULL,
-                     author VARCHAR(100) NOT NULL,
-                     preview LONGBLOB
+                     author VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE issue(
