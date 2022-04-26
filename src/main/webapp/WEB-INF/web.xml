@@ -7,4 +7,11 @@
     <resource-env-ref>
         <resource-env-ref-name>jdbc/pool4library</resource-env-ref-name>
     </resource-env-ref>
+
+    <!--<servlet>
+        <servlet-name></servlet-name>
+        <multipart-config>
+            <location>djhfu</location>
+        </multipart-config>
+    </servlet>-->
 </web-app>
