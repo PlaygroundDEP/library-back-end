@@ -36,17 +36,25 @@ public class BookServlet extends HttpServlet {
                 req.getServletPath().equalsIgnoreCase("/books/")))) {
             res.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
+        } else if (method.equals("PUT") && !(pathInfo != null &&
+                pathInfo.substring(1).matches("\\d{10,13}[/]?"))){
+            res.sendError(HttpServletResponse.SC_NOT_FOUND, "Book does not exist");
+            return;
         }
 
         try {
             Jsonb jsonb = JsonbBuilder.create();
             BookDTO book = jsonb.fromJson(req.getReader(), BookDTO.class);
-            if (method.equals("POST") && (book.getIsbn() == null || !book.getIsbn().matches("[0-9]+"))) {
+            if (method.equals("POST") && (book.getIsbn() == null || !book.getIsbn().matches("\\d{10,13}"))) {
                 throw new ValidationException("Invalid ISBN");
             } else if (book.getName() == null || !book.getName().matches("[A-Za-z0-9 ]+")) {
                 throw new ValidationException("Invalid Name");
             } else if (book.getAuthor() == null || !book.getAuthor().matches("[A-Za-z ]+")){
                 throw new ValidationException("Invalid Author");
+            }
+
+            if (method.equals("PUT")) {
+                book.setIsbn(pathInfo.replaceAll("[/]",""));
             }
 
             try(Connection connection = pool.getConnection()) {
@@ -57,6 +65,14 @@ public class BookServlet extends HttpServlet {
                 if (rst.next()) {
                     if (method.equals("POST")) {
                         res.sendError(HttpServletResponse.SC_CONFLICT, "Book already exists");
+                    } else {
+                        stm = connection.prepareStatement("UPDATE book SET name=?, author=? WHERE isbn=?");
+                        stm.setString(1, book.getName());
+                        stm.setString(2, book.getAuthor());
+                        stm.setString(3, book.getIsbn());
+                        if (stm.executeUpdate() != 1) {
+                            throw new RuntimeException("Failed to update the book");
+                        }res.setStatus(HttpServletResponse.SC_NO_CONTENT);
                     }
                 } else {
                     stm = connection.prepareStatement("INSERT INTO book (isbn, name, author) VALUES (?,?,?)");
@@ -90,5 +106,10 @@ public class BookServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         doSaveOrUpdate(request, response);
+    }
+
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        doSaveOrUpdate(req, resp);
     }
 }
