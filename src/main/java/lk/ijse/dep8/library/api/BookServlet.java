@@ -96,8 +96,6 @@ public class BookServlet extends HttpServlet {
 
     }
 
-
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
@@ -111,5 +109,38 @@ public class BookServlet extends HttpServlet {
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         doSaveOrUpdate(req, resp);
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if (req.getPathInfo()==null || req.getPathInfo().equals("/")) {
+            resp.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "unable to delete all the books");
+            return;
+        } else if (req.getPathInfo()!=null && !req.getPathInfo().substring(1).matches("\\d{10,13}[/]?")) {
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Book not found");
+            return;
+        }
+
+        String isbn = req.getPathInfo().replaceAll("[/]","");
+
+        try(Connection connection = pool.getConnection()) {
+            PreparedStatement stm = connection.prepareStatement("SELECT * FROM book WHERE isbn=?");
+            stm.setString(1, isbn);
+            ResultSet rst = stm.executeQuery();
+
+            if (rst.next()) {
+                stm = connection.prepareStatement("DELETE FROM book WHERE isbn=?");
+                stm.setString(1, isbn);
+                if (stm.executeUpdate()!=1) {
+                    throw new RuntimeException("Failed to delete a member");
+                }
+                resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            } else {
+                resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Book not found");
+            }
+        }catch (SQLException | RuntimeException e) {
+            e.printStackTrace();
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
     }
 }
