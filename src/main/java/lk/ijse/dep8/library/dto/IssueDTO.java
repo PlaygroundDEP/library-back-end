@@ -1,6 +1,7 @@
 package lk.ijse.dep8.library.dto;
 
 import jakarta.json.bind.annotation.JsonbDateFormat;
+import jakarta.json.bind.annotation.JsonbTransient;
 
 import java.sql.Date;
 
@@ -10,6 +11,7 @@ public class IssueDTO {
     private String isbn;
     @JsonbDateFormat("yyyy-MM-dd")
     private Date date;
+    private boolean availability;
 
     public IssueDTO() {
     }
@@ -56,5 +58,14 @@ public class IssueDTO {
 
     public void setDate(Date date) {
         this.date = date;
+    }
+
+    public boolean isAvailability() {
+        return availability;
+    }
+
+    @JsonbTransient
+    public void setAvailability(boolean availability) {
+        this.availability = availability;
     }
 }
